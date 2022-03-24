@@ -1,0 +1,9 @@
+ddsketch==1.1.2
+seaborn
+matplotlib
+scipy
+tqdm
+pandas
+jupyter
+numpy
+git+https://github.com/moretoknow/greedyks
