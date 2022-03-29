@@ -105,7 +105,7 @@ def eval_error_D(ref_distrib, sample, num_bins):
     return error_D
 
 #@profile
-def eval_responsiveness(ref_distrib, sample, num_bins):
+def eval_effectiveness(ref_distrib, sample, num_bins):
     drift_point = len(sample)//10
     sample = sample[:int(len(sample)*.9)]
     stream = np.concatenate((ref_distrib.rvs(drift_point), sample))
