@@ -234,13 +234,15 @@ def plot_log_error_bars(data, axis, exp_type, legend=False):
         plt.legend()
         
 def plot_errors(result, titles, y_label, x_label, exp_type, fig_name, ylog=True):
-    fig = plt.figure(figsize=(14.,4.))
+    fig = plt.figure(figsize=(7.,2.))
     gs = fig.add_gridspec(1,3, wspace=0.)
 
     axs = gs.subplots(sharey=True)
     
     for i, type_ in enumerate(distrib_types):
         data = result[result.distrib == type_]
+        
+        axs[i].set_xmargin(0.1)
     
         plot_log_error_bars(data, axs[i], exp_type, i == 1)
         
@@ -254,6 +256,8 @@ def plot_errors(result, titles, y_label, x_label, exp_type, fig_name, ylog=True)
     
     axs[0].set(ylabel=y_label)
     axs[1].legend(loc='lower center', ncol=5, bbox_to_anchor=(0.5, -0.4))
+    
+    
 
     fig.text(0.5, -0.045, x_label, ha="center")
     
@@ -282,7 +286,7 @@ def plot_table(result, exp_type, tex_name=None):
                                       10000:'$10^4$',
                                      }).T
         
-        table.to_latex(tex_file)
+        table.style.to_latex(tex_file)
         
         tables[distrib] = table
 
