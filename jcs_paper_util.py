@@ -284,6 +284,7 @@ def plot_table(result, exp_type, tex_name=None):
                                       10000:'$10^4$',
                                      }).T
         
+        tex_name = tex_name + '_' + distrib + '.tex' if tex_name else None
         table.style.to_latex(tex_name)
         
         tables[distrib] = table
