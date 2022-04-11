@@ -267,9 +267,7 @@ def format_table(x):
     return '{:d} / {:d} / {:.2f}'.format((x < 0).sum(), x.isna().sum(), x[x >= 0].mean())
     
 def plot_table(result, exp_type, tex_name=None):
-    
-    tex_file = open(tex_name, 'w') if tex_name else None
-    
+  
     tables = {}
     
     for distrib in distrib_types:
@@ -286,12 +284,9 @@ def plot_table(result, exp_type, tex_name=None):
                                       10000:'$10^4$',
                                      }).T
         
-        table.style.to_latex(tex_file)
+        table.style.to_latex(tex_name)
         
         tables[distrib] = table
-
-    if tex_file:
-        tex_file.close()
     
     return tables
     
