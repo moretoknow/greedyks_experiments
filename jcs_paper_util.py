@@ -81,7 +81,7 @@ def eval_error_D(ref_distrib, sample, num_bins):
 
     rs = ReservoirSampling(num_bins, ref_distrib)
     
-    gks = GreedyKS(ref_distrib, num_bins)
+    gks = GreedyKS(ref_distrib, num_bins, exact_prob=True)
     
     dds = LallDDSketch(compute_ddsketch_error(sample, num_bins), ref_distrib)
     
@@ -114,7 +114,7 @@ def eval_effectiveness(ref_distrib, sample, num_bins):
     
     eks = ReservoirSampling(len(stream), ref_distrib)
     
-    gks = GreedyKS(ref_distrib, num_bins)
+    gks = GreedyKS(ref_distrib, num_bins, exact_prob=True)
     
     dds = LallDDSketch(compute_ddsketch_error(sample, num_bins), ref_distrib)
     
@@ -148,7 +148,7 @@ def eval_efficiency(ref_distrib, sample, num_bins, interval):
         
     rs = ReservoirSampling(num_bins, ref_distrib)
     
-    gks = GreedyKS(ref_distrib, num_bins)
+    gks = GreedyKS(ref_distrib, num_bins, exact_prob=True)
     
     dds = LallDDSketch(compute_ddsketch_error(sample, num_bins), ref_distrib)
     
@@ -280,7 +280,7 @@ def plot_table(result, exp_type, tex_name=None):
         table = table.rename(columns={0.001: '$10^{-3}$',
                                       10**-2.5:'$10^{-2.5}$',
                                       0.01:'$10^{-2}$',
-                                      0.1:'10^{-1}',
+                                      0.1:'$10^{-1}$',
                                       1000:'$10^3$',
                                       3162:'$10^{3.5}$',
                                       10000:'$10^4$',
@@ -334,8 +334,8 @@ def single_process_eff(args):
     
     return eff
 
-def get_results(**args_gen_args):
-    results = mproc.Pool().imap(single_process, args_gen(**args_gen_args))
+def get_results(nproc=None, **args_gen_args):
+    results = mproc.Pool(processes=nproc).imap(single_process, args_gen(**args_gen_args))
     total_tests = default_num_reps * len(next(iter(args_gen_args.values()))) * len(distrib_types)
     results = tqdm.tqdm(results, total=total_tests)
     return pd.DataFrame(results)
@@ -362,12 +362,13 @@ class ReservoirSampling():
         self.t += 1
         
     def get_D(self):
-        return st.ks_1samp( self.reservoir, self.ref_distrib.cdf )[0]
+        return st.ks_1samp(self.reservoir, self.ref_distrib.cdf)[0]
     
     def detected_change(self):
-        D = self.get_D()
-        prob = st.kstwobign.sf(D * self.t**.5)
-        return (prob <= self.p_threshold)
+        #D = self.get_D()
+        #prob = st.kstwobign.sf(D * self.t**.5)
+        prob = st.ks_1samp(self.reservoir, self.ref_distrib.cdf)[1]
+        return prob <= self.p_threshold
 
 class IksReservoir():
     def __init__(self, size, ref_distrib, p_threshold=0.01):
@@ -462,8 +463,9 @@ class LallDDSketch():
     def detected_change(self):
         num_bins = len(self.dds.store.bins) + len(self.dds.negative_store.bins)
         D = self.get_D()
-        prob = st.kstwobign.sf(D * self.dds.count**.5)
-        return (prob <= self.p_threshold)
+        #prob = st.kstwobign.sf(D * self.dds.count**.5)
+        prob = st.kstwo.sf(D, self.dds.count)
+        return prob <= self.p_threshold
 
 #class LallDDSketch():
 #    def __init__(self, num_bins, error, ref_distrib, p_threshold=0.01):
