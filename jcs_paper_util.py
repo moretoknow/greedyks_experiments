@@ -154,11 +154,12 @@ def eval_efficiency(ref_distrib, sample, num_bins, interval):
     
     iksr = IksReservoir(num_bins, ref_distrib)
     
-    methods = {"Reservoir Sampling": rs,
-               "GreedyKS": gks,
-               "Lall + DDSketch": dds,
-               "IKS + Reservoir": iksr,
-              }
+    methods = {
+            "Reservoir Sampling": rs,
+            "GreedyKS": gks,
+            "Lall + DDSketch": dds,
+            "IKS + Reservoir": iksr,
+            }
     
     eff = {}
     
@@ -169,7 +170,7 @@ def eval_efficiency(ref_distrib, sample, num_bins, interval):
             if t % interval == 0:
                 methods[m].get_D()
         eff[m] = time.time() - begin
-    
+
     return eff
     
 def gen_test_distribs(mean_diff, std_diff, type_):
@@ -277,6 +278,7 @@ def plot_table(result, exp_type, tex_name=None):
 
         table = table.rename(columns={0.001: '$10^{-3}$',
                                       10**-2.5:'$10^{-2.5}$',
+                                      10**-1.5:'$10^{-1.5}$',
                                       0.01:'$10^{-2}$',
                                       0.1:'$10^{-1}$',
                                       1000:'$10^3$',
@@ -358,13 +360,10 @@ class ReservoirSampling():
         self.t += 1
         
     def get_D(self):
-        return st.ks_1samp(self.reservoir, self.ref_distrib.cdf)[0]
+        return np.abs(self.ref_distrib.cdf(np.sort(self.reservoir)) - np.linspace(0,1,len(self.reservoir))).max()
     
     def detected_change(self):
-        #D = self.get_D()
-        #prob = st.kstwobign.sf(D * self.t**.5)
-        prob = st.ks_1samp(self.reservoir, self.ref_distrib.cdf)[1]
-        return prob <= self.p_threshold
+        return st.kstwo.sf(self.get_D(), len(self.reservoir)) <= self.p_threshold
 
 class IksReservoir():
     def __init__(self, size, ref_distrib, p_threshold=0.01):
@@ -455,13 +454,8 @@ class LallDDSketch():
 #        return dds_D
     
     
-    #@profile
     def detected_change(self):
-        num_bins = len(self.dds.store.bins) + len(self.dds.negative_store.bins)
-        D = self.get_D()
-        #prob = st.kstwobign.sf(D * self.dds.count**.5)
-        prob = st.kstwo.sf(D, self.dds.count)
-        return prob <= self.p_threshold
+        return st.kstwo.sf(self.get_D(), self.dds.count) <= self.p_threshold
 
 #class LallDDSketch():
 #    def __init__(self, num_bins, error, ref_distrib, p_threshold=0.01):
