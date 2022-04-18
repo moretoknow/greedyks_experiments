@@ -265,7 +265,7 @@ def plot_errors(result, titles, y_label, x_label, exp_type, fig_name, ylog=True)
     plt.savefig(fig_name, bbox_inches='tight')
     
 def format_table(x):
-    return '{:d} / {:d} / {:.2f}'.format((x < 0).sum(), x.isna().sum(), x[x >= 0].mean())
+    return '{:d}/{:d}/{:.1f}'.format((x < 0).sum(), x.isna().sum(), x[x >= 0].mean())
     
 def plot_table(result, exp_type, tex_name=None):
   
