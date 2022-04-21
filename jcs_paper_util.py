@@ -26,7 +26,7 @@ distrib_types = ['normal', 'uniform', 'exp']
 
 default_num_reps = 100
 
-approx_methods = ['GreedyKS', 'Reservoir Sampling', 'Lall + DDSketch', 'IKS + Reservoir']
+approx_methods = ['GreedyKS', 'Reservoir Sampling', 'IKS + Reservoir', 'Lall + DDSketch']
 
 def matplotlib_setup():
     matplotlib.rc('mathtext', fontset='cm')
@@ -234,6 +234,10 @@ def plot_log_error_bars(data, axis, exp_type, legend=False):
     if legend:
         plt.legend()
         
+def plot_errors2(results, y_label, fig_name, ylog=True):
+    # results: dicionário com elementos do tipo 'sample_size':(df,'Sample size')
+    pass
+        
 def plot_errors(result, titles, y_label, x_label, exp_type, fig_name, ylog=True):
     fig = plt.figure(figsize=(7.,2.))
     gs = fig.add_gridspec(1,3, wspace=0.)
@@ -281,9 +285,13 @@ def plot_table(result, exp_type, tex_name=None):
                                       10**-1.5:'$10^{-1.5}$',
                                       0.01:'$10^{-2}$',
                                       0.1:'$10^{-1}$',
-                                      1000:'$10^3$',
+                                      10**1:'$10^1$',
+                                      10**2:'$10^2$',
+                                      10**3:'$10^3$',
+                                      10**4:'$10^4$',
                                       3162:'$10^{3.5}$',
-                                      10000:'$10^4$',
+                                      31:'$10^{1.5}$',
+                                      
                                      }).T
         
         tex_file = tex_name + '_' + distrib + '.tex' if tex_name else None
@@ -294,23 +302,23 @@ def plot_table(result, exp_type, tex_name=None):
     return tables
     
 def args_gen(
-    sample_size=(10**5,), 
-    memo_perct=(0.01,), 
+    sample_size=(10**4,), 
+    memo_units=(10**2,), 
     mean_diff=(0.1,),
-    std_diff=(0.,),
+    std_diff=(0.0,),
     q_interval=(1,)):
     
     for nr in range(default_num_reps):
-        yield from it.product(memo_perct, sample_size, mean_diff, std_diff, q_interval, distrib_types)
+        yield from it.product(sample_size, memo_units, mean_diff, std_diff, q_interval, distrib_types)
         
 def single_process(args):
-    mp, ss, md, sd, qi, type_ = args
+    ss, mu, md, sd, qi, type_ = args
     ref_distrib, alt_distrib = gen_test_distribs(md, sd, type_)
     sample = alt_distrib.rvs(ss)
-    num_bins = int(ss * mp)
+    num_bins = mu
     error_D = eval_error_D(ref_distrib, sample, num_bins)
     error_D['distrib'] = type_
-    error_D['memo_perct'] = mp
+    error_D['memo_units'] = mu
     error_D['sample_size'] = ss
     error_D['mean_diff'] = md
     error_D['std_diff'] = sd
@@ -318,13 +326,13 @@ def single_process(args):
     return error_D
 
 def single_process_eff(args):
-    mp, ss, md, sd, qi, type_ = args
+    ss, mu, md, sd, qi, type_ = args
     ref_distrib, alt_distrib = gen_test_distribs(md, sd, type_)
     sample = alt_distrib.rvs(ss)
-    num_bins = int(ss * mp)
+    num_bins = mu
     eff = eval_efficiency(ref_distrib, sample, num_bins, qi)
     eff['distrib'] = type_
-    eff['memo_perct'] = mp
+    eff['memo_units'] = mu
     eff['sample_size'] = ss
     eff['mean_diff'] = md
     eff['std_diff'] = sd
