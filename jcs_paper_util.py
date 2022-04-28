@@ -235,8 +235,37 @@ def plot_log_error_bars(data, axis, exp_type, legend=False):
         plt.legend()
         
 def plot_errors2(results, y_label, fig_name, ylog=True):
-    # results: dicionário com elementos do tipo 'sample_size':(df,'Sample size')
-    pass
+    # results => type:(DataFrame,'label')
+    
+    fig = plt.figure(figsize=(7.,2.))
+    gs = fig.add_gridspec(1,3, wspace=0.)
+
+    axs = gs.subplots(sharey=True)
+    
+    for i, type_ in enumerate(results):
+        df = results[type_][0]
+        data = df[df.distrib == 'normal']
+        
+        axs[i].set_xmargin(0.1)
+    
+        plot_log_error_bars(data, axs[i], type_, i == 1)
+        
+        if ylog:
+            axs[i].set(xscale="log", yscale="log")
+        else:
+            axs[i].set(xscale="log", yscale="linear")
+        
+        if i > 0:
+            axs[i].tick_params(axis='y', which='both', left=False, right=False)
+        
+        axs[i].set(xlabel=results[type_][1])
+    
+    axs[0].set(ylabel=y_label)
+    axs[1].set(title='Efficiency of methods for Normal distribution')
+    axs[1].legend(loc='lower center', ncol=5, bbox_to_anchor=(0.5, -0.45))
+  
+    plt.savefig(fig_name, bbox_inches='tight')
+    
         
 def plot_errors(result, titles, y_label, x_label, exp_type, fig_name, ylog=True):
     fig = plt.figure(figsize=(7.,2.))
