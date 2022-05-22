@@ -173,44 +173,38 @@ def eval_efficiency(ref_distrib, sample, num_bins, interval):
 
     return eff
 
-def eval_eda(ref_distrib, sample, num_bins):
-    drift_point = len(sample)//10
-    sample = sample[:int(len(sample)*.9)]
-    stream = np.concatenate((ref_distrib.rvs(drift_point), sample))
+def eval_eda(ts_all, num_bins):
+    
+    expon_fitted = None
+    isfit = refit = lim_inf = 0
+    
+    t_drift = []
+    
+    for t, element in enumerate(ts_all):
+        
+        smp = ts_all[lim_inf:t]
+        
+        if len(smp) > 3:
+            dif_all = (smp[1:] - smp[:-1]).astype(int)//10**9
 
-    rs = ReservoirSampling(num_bins, ref_distrib)
-    
-    eks = ReservoirSampling(len(stream), ref_distrib)
-    
-    gks = GreedyKS(ref_distrib, num_bins, exact_prob=True)
-    
-    dds = LallDDSketch(compute_ddsketch_error(sample, num_bins), ref_distrib)
-    
-    iksr = IksReservoir(num_bins, ref_distrib)
-    
-    methods = {"Reservoir Sampling": {'method':rs, 'stop':False},
-               "Exact KS": {'method':eks, 'stop':False},
-               "GreedyKS": {'method':gks, 'stop':False},
-               "Lall + DDSketch": {'method':dds, 'stop':False},
-               "IKS + RS": {'method':iksr, 'stop':False},
-              }
-    
-    respon = {"Reservoir Sampling": [],
-              "Exact KS": [],
-              "GreedyKS": [], 
-              "Lall + DDSketch": [], 
-              "IKS + RS": [],
-             }
-   
-    for t, element in enumerate(stream):
-        for m in methods:
-            if not methods[m]['stop']:
-                methods[m]['method'].add_element(element)
-                if t >= num_bins and methods[m]['method'].detected_change():
-                    respon[m].append(t - drift_point)
-                    methods[m]['stop'] = True
-                    
-    return respon
+            if expon_fitted == None:
+                expon_fitted = st.expon(*st.expon.fit(dif_all))
+                rs = ReservoirSampling(num_bins, expon_fitted)
+                refit += 1
+                
+            elif len(smp) >= num_bins and rs.detected_change():
+                t_drift.append(t)
+                expon_fitted = None
+                lim_inf = t
+                
+            else:
+                rs.add_element(element)
+                isfit += 1
+
+        if isfit + refit > 10**5:
+            break
+        
+    return t_drift
     
 def gen_test_distribs(mean_diff, std_diff, type_):
     mean = std = 1
