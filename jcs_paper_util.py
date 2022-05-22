@@ -26,7 +26,7 @@ distrib_types = ['normal', 'uniform', 'exp']
 
 default_num_reps = 100
 
-approx_methods = ['GreedyKS', 'Reservoir Sampling', 'IKS + Reservoir', 'Lall + DDSketch']
+approx_methods = ['GreedyKS', 'Reservoir Sampling', 'IKS + RS', 'Lall + DDSketch']
 
 def matplotlib_setup():
     matplotlib.rc('mathtext', fontset='cm')
@@ -90,7 +90,7 @@ def eval_error_D(ref_distrib, sample, num_bins):
     methods = {"Reservoir Sampling": rs,
                "GreedyKS": gks,
                "Lall + DDSketch": dds,
-               "IKS + Reservoir": iksr,
+               "IKS + RS": iksr,
               }
     
     for observation in sample:
@@ -124,14 +124,14 @@ def eval_effectiveness(ref_distrib, sample, num_bins):
                "Exact KS": {'method':eks, 'stop':False},
                "GreedyKS": {'method':gks, 'stop':False},
                "Lall + DDSketch": {'method':dds, 'stop':False},
-               "IKS + Reservoir": {'method':iksr, 'stop':False},
+               "IKS + RS": {'method':iksr, 'stop':False},
               }
     
     respon = {"Reservoir Sampling": float('nan'),
               "Exact KS": float('nan'),
               "GreedyKS": float('nan'), 
               "Lall + DDSketch": float('nan'), 
-              "IKS + Reservoir": float('nan'),
+              "IKS + RS": float('nan'),
              }
    
     for t, element in enumerate(stream):
@@ -158,7 +158,7 @@ def eval_efficiency(ref_distrib, sample, num_bins, interval):
             "Reservoir Sampling": rs,
             "GreedyKS": gks,
             "Lall + DDSketch": dds,
-            "IKS + Reservoir": iksr,
+            "IKS + RS": iksr,
             }
     
     eff = {}
@@ -261,7 +261,7 @@ def plot_errors2(results, y_label, fig_name, ylog=True):
         axs[i].set(xlabel=results[type_][1])
     
     axs[0].set(ylabel=y_label)
-    axs[1].set(title='Efficiency of methods for Normal distribution')
+    axs[1].set(title='Efficiency assessment, Normal distribution')
     axs[1].legend(loc='lower center', ncol=5, bbox_to_anchor=(0.5, -0.45))
   
     plt.savefig(fig_name, bbox_inches='tight')
