@@ -172,6 +172,45 @@ def eval_efficiency(ref_distrib, sample, num_bins, interval):
         eff[m] = time.time() - begin
 
     return eff
+
+def eval_eda(ref_distrib, sample, num_bins):
+    drift_point = len(sample)//10
+    sample = sample[:int(len(sample)*.9)]
+    stream = np.concatenate((ref_distrib.rvs(drift_point), sample))
+
+    rs = ReservoirSampling(num_bins, ref_distrib)
+    
+    eks = ReservoirSampling(len(stream), ref_distrib)
+    
+    gks = GreedyKS(ref_distrib, num_bins, exact_prob=True)
+    
+    dds = LallDDSketch(compute_ddsketch_error(sample, num_bins), ref_distrib)
+    
+    iksr = IksReservoir(num_bins, ref_distrib)
+    
+    methods = {"Reservoir Sampling": {'method':rs, 'stop':False},
+               "Exact KS": {'method':eks, 'stop':False},
+               "GreedyKS": {'method':gks, 'stop':False},
+               "Lall + DDSketch": {'method':dds, 'stop':False},
+               "IKS + RS": {'method':iksr, 'stop':False},
+              }
+    
+    respon = {"Reservoir Sampling": [],
+              "Exact KS": [],
+              "GreedyKS": [], 
+              "Lall + DDSketch": [], 
+              "IKS + RS": [],
+             }
+   
+    for t, element in enumerate(stream):
+        for m in methods:
+            if not methods[m]['stop']:
+                methods[m]['method'].add_element(element)
+                if t >= num_bins and methods[m]['method'].detected_change():
+                    respon[m].append(t - drift_point)
+                    methods[m]['stop'] = True
+                    
+    return respon
     
 def gen_test_distribs(mean_diff, std_diff, type_):
     mean = std = 1
