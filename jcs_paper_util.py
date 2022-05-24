@@ -172,6 +172,39 @@ def eval_efficiency(ref_distrib, sample, num_bins, interval):
         eff[m] = time.time() - begin
 
     return eff
+
+def eval_eda(ts_all, num_bins):
+    
+    expon_fitted = None
+    isfit = refit = lim_inf = 0
+    
+    t_drift = []
+    
+    for t, element in enumerate(ts_all):
+        
+        smp = ts_all[lim_inf:t]
+        
+        if len(smp) > 3:
+            dif_all = (smp[1:] - smp[:-1]).astype(int)//10**9
+
+            if expon_fitted == None:
+                expon_fitted = st.expon(*st.expon.fit(dif_all))
+                rs = ReservoirSampling(num_bins, expon_fitted)
+                refit += 1
+                
+            elif len(smp) >= num_bins and rs.detected_change():
+                t_drift.append(t)
+                expon_fitted = None
+                lim_inf = t
+                
+            else:
+                rs.add_element(element)
+                isfit += 1
+
+        if isfit + refit > 10**5:
+            break
+        
+    return t_drift
     
 def gen_test_distribs(mean_diff, std_diff, type_):
     mean = std = 1
