@@ -116,7 +116,7 @@ def eval_effectiveness(ref_distrib, sample, num_bins):
     
     gks = GreedyKS(ref_distrib, num_bins, exact_prob=True)
     
-    dds = LallDDSketch(compute_ddsketch_error(sample, num_bins), ref_distrib)
+    dds = LallDDSketch(compute_ddsketch_error(stream, num_bins), ref_distrib)
     
     iksr = IksReservoir(num_bins, ref_distrib)
     
@@ -320,6 +320,7 @@ def plot_table(result, exp_type, tex_name=None):
                                       10**4:'$10^4$',
                                       3162:'$10^{3.5}$',
                                       31:'$10^{1.5}$',
+                                      31622:'$10^{4.5}$',
                                       
                                      }).T
         
