@@ -1,3 +1,11 @@
+import requests
+import bs4
+import urllib.request
+import os.path
+
+import dtaidistance.dtw
+import collections as cl
+
 import pandas as pd
 
 import multiprocessing as mproc
@@ -21,6 +29,8 @@ import ddsketch.mapping as ddmapping
 from random import randrange
 from greedyks import GreedyKS
 from IKS import IKS
+
+np.seterr('raise', under='ignore')
 
 distrib_types = ['normal', 'uniform', 'exp']
 
@@ -68,7 +78,7 @@ def compute_ddsketch_error(sample, num_bins):
     if (sample < 0).any():
         range_limits.append([-sample[sample < 0].min(), -sample[sample < 0].max()])
     
-    alpha = float('-inf')
+    alpha = np.finfo(float).eps
     
     for a, b in range_limits:
         x = (a/b)**(1/num_bins)
@@ -172,39 +182,6 @@ def eval_efficiency(ref_distrib, sample, num_bins, interval):
         eff[m] = time.time() - begin
 
     return eff
-
-def eval_eda(ts_all, num_bins):
-    
-    expon_fitted = None
-    isfit = refit = lim_inf = 0
-    
-    t_drift = []
-    
-    for t, element in enumerate(ts_all):
-        
-        smp = ts_all[lim_inf:t]
-        
-        if len(smp) > 3:
-            dif_all = (smp[1:] - smp[:-1]).astype(int)//10**9
-
-            if expon_fitted == None:
-                expon_fitted = st.expon(*st.expon.fit(dif_all))
-                rs = ReservoirSampling(num_bins, expon_fitted)
-                refit += 1
-                
-            elif len(smp) >= num_bins and rs.detected_change():
-                t_drift.append(t)
-                expon_fitted = None
-                lim_inf = t
-                
-            else:
-                rs.add_element(element)
-                isfit += 1
-
-        if isfit + refit > 10**5:
-            break
-        
-    return t_drift
     
 def gen_test_distribs(mean_diff, std_diff, type_):
     mean = std = 1
@@ -431,7 +408,11 @@ class ReservoirSampling():
         self.t += 1
         
     def get_D(self):
-        return np.abs(self.ref_distrib.cdf(np.sort(self.reservoir)) - np.linspace(0,1,len(self.reservoir))).max()
+        cdf_results = self.ref_distrib.cdf(np.sort(self.reservoir))
+        n = len(self.reservoir)
+        dp = (np.arange(1, n + 1) / n - cdf_results).max()
+        dn = (cdf_results - np.arange(0, n) / n).max()
+        return max(dp, dn)
     
     def detected_change(self):
         return st.kstwo.sf(self.get_D(), len(self.reservoir)) <= self.p_threshold
@@ -567,3 +548,96 @@ class LallDDSketch():
 #        D = self.get_D()
 #        prob = st.kstwobign.sf(D * self.dds.count**.5)
 #        return (prob <= self.p_threshold)
+
+
+def rs_builder(ref_distrib, num_bins, stream):
+    return ReservoirSampling(num_bins, ref_distrib)
+
+def gks_builder(ref_distrib, num_bins, stream):
+    return GreedyKS(ref_distrib, num_bins, exact_prob=True)
+
+def dds_builder(ref_distrib, num_bins, stream):
+    return LallDDSketch(compute_ddsketch_error(stream, num_bins), ref_distrib)
+
+def iks_builder(ref_distrib, num_bins, stream):
+    return IksReservoir(num_bins, ref_distrib)
+
+method_factory = {
+    'Reservoir Sampling': rs_builder,
+    'GreedyKS': gks_builder,
+    'Lall + DDSketch': dds_builder,
+    'IKS + RS': iks_builder,
+}
+
+def eval_call_center(args):
+    ts_smp, num_bins = args
+    
+    instances_methods = {}
+    resp = cl.defaultdict(list)
+    
+    minibatch_expon = None
+    full_batch = []
+    time = 0
+    
+    for i in ts_smp.groupby([ts_smp.dt.year, ts_smp.dt.month, ts_smp.dt.day, ts_smp.dt.hour]):
+        latest_hour_batch = (i[1][1:].values - i[1][:-1].values).astype(float)/10**9
+        latest_hour_var = len(set(latest_hour_batch))
+        latest_hour_expon = None
+        
+        full_batch = np.concatenate((full_batch, latest_hour_batch))
+
+        if minibatch_expon == None or st.ks_1samp(full_batch, minibatch_expon.cdf).pvalue < 0.01:
+            if latest_hour_var > 3:
+                latest_hour_expon = minibatch_expon = st.expon(*st.expon.fit(latest_hour_batch))
+                full_batch = latest_hour_batch
+                resp['mini-batch'].append(time)
+            else:
+                minibatch_expon = None
+
+        for element in latest_hour_batch:
+            time += 1
+            for m in approx_methods:
+                if m in instances_methods:
+                    instances_methods[m].add_element(element)
+
+                    if instances_methods[m].detected_change():
+                        resp[m].append(time)
+                        del instances_methods[m]
+
+        if latest_hour_var > 3:
+            for m in approx_methods:
+                if m not in instances_methods:
+                    latest_hour_expon = latest_hour_expon or st.expon(*st.expon.fit(latest_hour_batch))
+                    
+                    instances_methods[m] = method_factory[m](latest_hour_expon, num_bins, latest_hour_batch)
+
+                    for element in latest_hour_batch:
+                        instances_methods[m].add_element(element)
+
+    return {k:dtaidistance.dtw.distance(resp.get(k, []), resp['mini-batch']) for k in approx_methods if k != 'mini-batch'}
+
+def load_call_center_data():
+    base_url = 'http://iew3.technion.ac.il/serveng/callcenterdata/'
+    page = bs4.BeautifulSoup(requests.get(base_url).text, features="html.parser")
+    files = []
+    
+    if not os.path.exists('./callcenterdata/'):
+        os.mkdir('./callcenterdata/')
+
+    for i in page.find_all('a'):
+        if 'ZIP' in i['href']:
+            file = f"./callcenterdata/{i['href']}"
+            files.append(file)
+            if not os.path.exists(file):
+                urllib.request.urlretrieve(base_url + i['href'], file)
+    
+    dfs = {i: pd.read_csv(i, sep='\s+') for i in files}
+    tss = {i: pd.to_datetime(dfs[i].date.astype(str) + dfs[i].vru_entry, format='%y%m%d%H:%M:%S') for i in dfs}
+    return pd.concat(tss.values()).sort_values()
+
+def get_results_call_center(num_bins, samples, nproc=None):
+    args_gen = ((sample, num_bins) for sample in samples)
+    
+    results = mproc.Pool(processes=nproc).imap(eval_call_center, args_gen)
+    results = tqdm.tqdm(results, total=len(samples))
+    return pd.DataFrame(results)

@@ -7,3 +7,7 @@ pandas
 jupyter
 numpy
 git+https://github.com/moretoknow/greedyks
+dtaidistance
+requests
+bs4
+urllib
