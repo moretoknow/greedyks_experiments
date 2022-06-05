@@ -1,3 +1,3 @@
-# GreedyKS experiments for JCS
+# GreedyKS experiments
 
-Implementation of the experiments of the GreedyKS method presented in the manuscript submitted to Journal of Computational Science (JCS).
+Implementation of the experiments of the GreedyKS method, whose results are analyzed in a manuscript just submitted to peer review.
