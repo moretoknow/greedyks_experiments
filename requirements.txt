@@ -7,5 +7,4 @@ jupyter==1.0.0
 numpy==1.22.3
 git+https://github.com/moretoknow/driftwatch@11a45ccbaed78a16c1ab3fd28db3844874f812e5
 dtaidistance==2.3.6
-requests==2.27.1
 beautifulsoup4==4.10.0

@@ -1,4 +1,3 @@
-import requests
 import bs4
 import urllib.request
 import os.path
@@ -448,7 +447,7 @@ def eval_call_center(args):
 
 def load_call_center_data():
     base_url = 'http://iew3.technion.ac.il/serveng/callcenterdata/'
-    page = bs4.BeautifulSoup(requests.get(base_url).text, features="html.parser")
+    page = bs4.BeautifulSoup(urllib.request.urlopen(base_url).read(), features="html.parser")
     files = []
     
     if not os.path.exists('./callcenterdata/'):
