@@ -450,9 +450,6 @@ def load_call_center_data():
     page = bs4.BeautifulSoup(urllib.request.urlopen(base_url).read(), features="html.parser")
     files = []
     
-    if not os.path.exists('./callcenterdata/'):
-        os.mkdir('./callcenterdata/')
-
     for i in page.find_all('a'):
         if 'ZIP' in i['href']:
             file = f"./callcenterdata/{i['href']}"
