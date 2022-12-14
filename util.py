@@ -108,10 +108,15 @@ def eval_error_D(ref_distrib, sample, num_bins):
     return error_D
 
 #@profile
-def eval_effectiveness(ref_distrib, sample, num_bins):
-    drift_point = len(sample)//10
-    sample = sample[:int(len(sample)*.9)]
-    stream = np.concatenate((ref_distrib.rvs(drift_point), sample))
+def eval_effectiveness(ref_distrib, sample, num_bins, grace_period=None):
+    if grace_period == None:
+        drift_point = len(sample)//10
+        sample = sample[:int(len(sample)*.9)]
+        stream = np.concatenate((ref_distrib.rvs(drift_point), sample))
+        grace_period = num_bins
+    else:
+        drift_point = 0
+        stream = sample
 
     rs = ReservoirSampling(num_bins, ref_distrib)
     
@@ -141,7 +146,7 @@ def eval_effectiveness(ref_distrib, sample, num_bins):
         for m in methods:
             if not methods[m]['stop']:
                 methods[m]['method'].add_element(element)
-                if t >= num_bins and methods[m]['method'].detected_change():
+                if t >= grace_period and methods[m]['method'].detected_change():
                     respon[m] = t - drift_point
                     methods[m]['stop'] = True
                     
